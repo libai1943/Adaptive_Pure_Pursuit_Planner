@@ -7,7 +7,7 @@
 mkdir -p ~/catkin_app_ws
 cd catkin_app_ws/
 unzip app_hnu_planner.zip
-
+```
 
 ## 编译
 
