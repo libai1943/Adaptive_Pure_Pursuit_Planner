@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find app_hnu_planner)/config/exp.rviz"/>
+  <node pkg="app_hnu_planner" type="app_hnu_planner" name="app_hnu_planner" output="screen"/>
+
+</launch>
