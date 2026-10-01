@@ -1,4 +1,4 @@
-"""Render an actual successful APP run for the README (NumPy + Matplotlib)."""
+"""Render verified APP trajectories with distance-colored footprints and bend details."""
 import argparse
 import json
 from pathlib import Path
@@ -6,64 +6,107 @@ from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib.collections import PolyCollection
+from matplotlib.collections import LineCollection, PolyCollection
+from matplotlib.colors import Normalize
+from matplotlib.lines import Line2D
+from matplotlib.patches import Rectangle
 import numpy as np
 
 
 def render(scene_file, result_dir, output, parameters):
-    c = dict(line.split() for line in parameters.read_text().splitlines() if line.strip() and not line.startswith('#'))
-    c = {k: float(v) for k, v in c.items()}
+    config = {k: float(v) for k, v in (
+        line.split() for line in parameters.read_text().splitlines()
+        if line.strip() and not line.startswith('#'))}
     scene = np.fromstring(scene_file.read_text(), sep=' ')
-    triangles = scene[11:].reshape(-1, 3, 2)
-    report = json.loads((result_dir / 'summary.json').read_text())
+    obstacles = scene[11:].reshape(-1, 3, 2)
+    report = json.loads((result_dir/'summary.json').read_text())
     if not report['success']:
-        raise ValueError('Refusing to illustrate a failed run as a successful result')
-    path = np.loadtxt(result_dir / 'dense_path.csv', delimiter=',', skiprows=1)
-    route = np.loadtxt(result_dir / 'initial_route.csv', delimiter=',', skiprows=1)
-    history = np.loadtxt(result_dir / 'history.csv', delimiter=',', skiprows=1, ndmin=2)
-    plt.rcParams.update({'font.family': 'DejaVu Sans', 'font.size': 10,
-                         'axes.spines.top': False, 'axes.spines.right': False})
-    fig = plt.figure(figsize=(14, 7.4), facecolor='#fafbfc')
-    grid = fig.add_gridspec(2, 2, width_ratios=[1.6, 1], hspace=.55, wspace=.28)
-    ax = fig.add_subplot(grid[:, 0]); curve = fig.add_subplot(grid[0, 1]); progress = fig.add_subplot(grid[1, 1])
-    ax.add_collection(PolyCollection(triangles, facecolors='#c5cbd3', edgecolors='none', antialiaseds=False, rasterized=True))
-    ax.plot(route[:, 0], route[:, 1], color='#dd9b28', lw=1.3, ls='--', label='A* guide')
-    ax.plot(path[:, 1], path[:, 2], color='#087c9e', lw=2.2, label='APP rear-axle path')
-    rear, front, half = c['rear_overhang'], c['length']-c['rear_overhang'], c['width']/2
-    local = np.array([[-rear, -half], [front, -half], [front, half], [-rear, half]])
-    footprints = []
-    stride = max(1, round(4/(c['speed']*c['simulation_dt']/c['integration_steps'])))
-    for row in path[::stride]:
-        co, si = np.cos(row[3]), np.sin(row[3])
-        footprints.append(local @ np.array([[co, si], [-si, co]]) + row[1:3])
-    ax.add_collection(PolyCollection(footprints, facecolors='none', edgecolors='#087c9e', linewidths=.5, alpha=.65))
-    ax.scatter(*scene[4:6], color='#194a57', marker='o', s=45, zorder=6, label='Start')
-    ax.scatter(*scene[7:9], color='#c44f37', marker='*', s=120, zorder=6, label='Requested goal')
-    ax.set(xlim=scene[:2], ylim=scene[2:4], aspect='equal', xlabel='x (m)', ylabel='y (m)', title='Curvy-road benchmark 005')
-    ax.legend(loc='lower left', framealpha=.95, fontsize=9)
-    shift = path[:, 0]*c['speed']
-    curvature = np.tan(path[:, 4]) / c['wheelbase']
-    limit = np.tan(c['max_steer']) / c['wheelbase']
-    curve.plot(shift, curvature, color='#087c9e', lw=1.5)
-    curve.axhline(limit, color='#c44f37', ls='--', lw=1, label='Steering bound')
-    curve.axhline(-limit, color='#c44f37', ls='--', lw=1)
-    curve.set(xlabel='Travelled distance (m)', ylabel='Curvature (1/m)', title='Rate-limited steering, bounded curvature')
-    curve.grid(alpha=.18); curve.legend(fontsize=9, loc='upper right')
-    progress.plot(history[:, 0], history[:, 1], '-o', color='#087c9e', lw=2, ms=5)
-    progress.set(xlabel='Outer iteration', ylabel='Conflicting sampled poses', title='Adaptive local repair')
-    progress.set_xticks(history[:, 0].astype(int)); progress.set_ylim(bottom=-1); progress.grid(alpha=.18)
-    fig.suptitle('ADAPTIVE PURE PURSUIT', x=.075, ha='left', y=.98, fontsize=22, fontweight='bold', color='#18364a')
-    fig.text(.075, .916, 'Chapter 8  |  A* initialization + virtual tracking + collision-driven carrot refinement', color='#506070', fontsize=11)
-    dt = c['simulation_dt']/c['integration_steps']
-    fig.text(.075, .037, f"Reproduction run: {len(path):,} dense poses checked at {dt:g} s  |  goal error {report['goal_position_error_m']:.3f} m, {report['goal_heading_error_rad']:.3f} rad", color='#506070', fontsize=10)
-    fig.subplots_adjust(left=.07, right=.97, top=.855, bottom=.14)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output, dpi=180, facecolor=fig.get_facecolor())
+        raise ValueError('Cannot present an unsuccessful planning run as successful.')
+    path = np.loadtxt(result_dir/'dense_path.csv', delimiter=',', skiprows=1)
+    route = np.loadtxt(result_dir/'initial_route.csv', delimiter=',', skiprows=1)
+    history = np.loadtxt(result_dir/'history.csv', delimiter=',', skiprows=1, ndmin=2)
+    distance = path[:, 0]*config['speed']
+    length = distance[-1]
+    cmap = plt.get_cmap('turbo')
+    norm = Normalize(0, length)
+    samples = np.unique(np.r_[np.arange(0, len(path), 10), len(path)-1])
+    points = path[samples, 1:3]
+    segments = np.stack([points[:-1], points[1:]], axis=1)
+    segment_distance = distance[samples[:-1]]
+    rear, front, half = config['rear_overhang'], config['length']-config['rear_overhang'], config['width']/2
+    local = np.array([[-rear,-half],[front,-half],[front,half],[-rear,half]])
+    spacing = config['simulation_dt']/config['integration_steps']*config['speed']
+    body_indices = np.arange(0, len(path), max(1,round(2.8/spacing)))
+    bodies = []
+    for row in path[body_indices]:
+        c, s = np.cos(row[3]), np.sin(row[3])
+        bodies.append(local@np.array([[c,s],[-s,c]])+row[1:3])
+    colors = cmap(norm(distance[body_indices]))
+    plt.rcParams.update({'font.family':'DejaVu Sans','font.size':10,
+        'axes.spines.top':False,'axes.spines.right':False,
+        'axes.labelcolor':'#596574','xtick.color':'#72808b','ytick.color':'#72808b'})
+    fig = plt.figure(figsize=(14,9),facecolor='white')
+    ax = fig.add_axes([.055,.17,.64,.69])
+    top = fig.add_axes([.755,.53,.215,.29])
+    bottom = fig.add_axes([.755,.195,.215,.29])
+
+    def draw(axis, limits, linewidth):
+        axis.set_facecolor('#fbfcfd')
+        axis.add_collection(PolyCollection(obstacles,facecolors='#e2e7eb',edgecolors='none',
+            antialiaseds=False,rasterized=True,zorder=1))
+        axis.plot(route[:,0],route[:,1],color='#7a8996',lw=1.05,ls=(0,(3,3)),alpha=.8,zorder=3)
+        fill = colors.copy(); fill[:,3] = .06
+        edge = colors.copy(); edge[:,3] = .62
+        axis.add_collection(PolyCollection(bodies,facecolors=fill,edgecolors=edge,linewidths=.65,zorder=4))
+        axis.plot(points[:,0],points[:,1],color='white',lw=linewidth+1.6,zorder=5)
+        lines = LineCollection(segments,cmap=cmap,norm=norm,linewidths=linewidth,zorder=6)
+        lines.set_array(segment_distance); lines.set_capstyle('round'); axis.add_collection(lines)
+        axis.set(xlim=limits[:2],ylim=limits[2:],aspect='equal')
+        for side in ['left','bottom']:
+            axis.spines[side].set_color('#d9e0e5')
+        axis.tick_params(length=3,labelsize=9)
+        return lines
+
+    lines = draw(ax,[-10,79,-45,19],2.9)
+    ax.set(xlabel='x (m)',ylabel='y (m)')
+    ax.scatter(*path[0,1:3],s=74,c=[cmap(0.)],edgecolors='white',linewidths=1.8,zorder=8)
+    ax.scatter(*scene[7:9],s=135,c=[cmap(1.)],marker='*',edgecolors='white',linewidths=.8,zorder=8)
+    ax.text(-6,3.1,'START',fontsize=9,fontweight='bold',color='#314762')
+    ax.text(65,-41.3,'GOAL',fontsize=9,fontweight='bold',color='#9d292b')
+    for travelled in [28,67,105,142,173]:
+        row = path[np.argmin(abs(distance-travelled))]
+        direction = np.array([np.cos(row[3]),np.sin(row[3])])
+        ax.annotate('',xy=row[1:3]+direction*1.3,xytext=row[1:3]-direction*1.3,
+            arrowprops={'arrowstyle':'-|>','color':cmap(norm(travelled)),'lw':1.5},zorder=9)
+    for bounds, label in [([47,71,1,19],'A'),([27,54,-42,-24],'B')]:
+        ax.add_patch(Rectangle((bounds[0],bounds[2]),bounds[1]-bounds[0],bounds[3]-bounds[2],
+            fill=False,edgecolor='#7f8fa0',ls=(0,(3,3)),lw=.75,zorder=2))
+        ax.text(bounds[0]+.7,bounds[3]-2,label,color='#42586b',fontsize=10,fontweight='bold')
+    draw(top,[48,70,1,18],3.4)
+    draw(bottom,[29,52,-42,-25],3.4)
+    top.set_title('A  /  Tight upper bend',loc='left',fontsize=11,pad=12,fontweight='bold',color='#294357')
+    bottom.set_title('B  /  Lower hairpin',loc='left',fontsize=11,pad=12,fontweight='bold',color='#294357')
+    fig.text(.055,.948,'ADAPTIVE PURE PURSUIT',fontsize=24,fontweight='bold',color='#183548')
+    fig.text(.055,.91,'Chapter 8  /  Planning through narrow, curved corridors',fontsize=12,color='#637485')
+    fig.text(.968,.943,'ACTUAL RUN\nBENCHMARK 005',ha='right',va='top',fontsize=10,color='#637485',linespacing=1.7)
+    legend = [Line2D([0],[0],color='#7a8996',ls='--',lw=1.2,label='A* initial guide'),
+              Rectangle((0,0),1,1,fill=False,edgecolor='#329396',lw=1,label='Vehicle footprints')]
+    ax.legend(handles=legend,loc='lower left',frameon=True,facecolor='white',edgecolor='none',fontsize=9)
+    colorbar = fig.colorbar(lines,cax=fig.add_axes([.075,.108,.60,.015]),orientation='horizontal')
+    colorbar.outline.set_visible(False)
+    colorbar.set_label('Travelled distance along the APP path (m)',fontsize=10,labelpad=6)
+    colorbar.set_ticks([0,40,80,120,160,length]); colorbar.ax.tick_params(length=2,labelsize=9)
+    fig.text(.758,.124,f'{length:.1f} m',fontsize=20,fontweight='bold',color='#183548')
+    fig.text(.885,.124,f'{len(history)} iterations',fontsize=15,fontweight='bold',color='#183548')
+    fig.text(.758,.095,f'{len(path):,} integrated poses checked',fontsize=10,color='#637485')
+    fig.text(.055,.028,'Rainbow encodes path progress. Footprints and bends come from the computed trajectory; obstacle geometry is unchanged.',fontsize=9,color='#78848e')
+    output.parent.mkdir(parents=True,exist_ok=True)
+    fig.savefig(output,dpi=190,facecolor='white')
     plt.close(fig)
 
 
 if __name__ == '__main__':
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('scene', type=Path); p.add_argument('result', type=Path); p.add_argument('output', type=Path)
-    p.add_argument('--parameters',type=Path,default=Path(__file__).resolve().parents[1]/'data'/'paper_parameters.txt')
-    a = p.parse_args(); render(a.scene, a.result, a.output, a.parameters)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('scene',type=Path); parser.add_argument('result',type=Path); parser.add_argument('output',type=Path)
+    parser.add_argument('--parameters',type=Path,default=Path(__file__).resolve().parents[1]/'data/paper_parameters.txt')
+    args = parser.parse_args(); render(args.scene,args.result,args.output,args.parameters)
