@@ -1,0 +1,28 @@
+name: C++ and MATLAB parity
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build and test C++
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel 2
+          ctest --test-dir build --output-on-failure
+      - uses: matlab-actions/setup-matlab@v3
+        with:
+          release: R2024b
+      - name: MATLAB core tests and scenes
+        uses: matlab-actions/run-command@v3
+        with:
+          command: addpath('matlab'); test_core; for k=[1 2 3 5], run_demo(sprintf('data/benchmark_%03d.txt',k),sprintf('output/regression/matlab/%d',k)); end
+      - name: Verify C++ results and cross-language agreement
+        run: python3 tools/run_regression.py --cpp build/app_demo --compare-existing-matlab
+      - name: Independent dense geometry audit
+        run: |
+          python3 -m pip install numpy shapely
+          python3 tools/validate_result.py data/benchmark_005.txt output/regression/cpp/5 data/paper_parameters.txt

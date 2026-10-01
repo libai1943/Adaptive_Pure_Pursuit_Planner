@@ -1,0 +1,16 @@
+/build*/
+/output/
+/tmp/
+__pycache__/
+*.pyc
+*.asv
+*.mex*
+*.exe
+*.dll
+*.obj
+*.o
+*.log
+*.mat
+*.zip
+.DS_Store
+Thumbs.db

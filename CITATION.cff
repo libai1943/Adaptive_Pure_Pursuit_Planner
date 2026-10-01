@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use this APP implementation, please cite the original TIV paper below."
+title: "Adaptive Pure Pursuit Planner: C++ and MATLAB companion code"
+type: software
+authors:
+  - family-names: Li
+    given-names: Bai
+repository-code: "https://github.com/libai1943/Adaptive_Pure_Pursuit_Planner"
+preferred-citation:
+  type: article
+  title: "Adaptive Pure Pursuit: A Real-Time Path Planner Using Tracking Controllers to Plan Safe and Kinematically Feasible Paths"
+  authors:
+    - family-names: Li
+      given-names: Bai
+    - family-names: Wang
+      given-names: Yazhou
+    - family-names: Ma
+      given-names: Siji
+    - family-names: Bian
+      given-names: Xuepeng
+    - family-names: Li
+      given-names: Hu
+    - family-names: Zhang
+      given-names: Tantan
+    - family-names: Li
+      given-names: Xiaohui
+    - family-names: Zhang
+      given-names: Youmin
+  journal: IEEE Transactions on Intelligent Vehicles
+  year: 2023
+  volume: 8
+  issue: 9
+  start: 4155
+  end: 4168
+  doi: 10.1109/TIV.2023.3296435

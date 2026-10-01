@@ -1,0 +1,23 @@
+# Table I of Li et al., IEEE TIV 8(9), 2023; SI units.
+wheelbase 2.8
+width 1.942
+length 4.689
+rear_overhang 0.929
+max_steer 0.7
+max_steer_rate 2.5
+outer_iterations 10
+buffer_left 4.0
+buffer_right 4.0
+buffer_increment 5.0
+simulation_dt 1.0
+speed 1.0
+inner_iterations 200
+traceback_length 4.0
+nudge 0.1
+# Numerical choices not specified in Table I, shared by both implementations.
+grid_resolution 0.25
+reference_spacing 0.1
+lookahead 3.0
+integration_steps 100
+extension 7.0
+max_tracking_steps 2000

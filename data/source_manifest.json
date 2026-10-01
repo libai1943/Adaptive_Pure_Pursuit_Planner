@@ -1,0 +1,30 @@
+[
+  {
+    "source": "Benchmarks/1.mat",
+    "source_sha256": "10bd1b76e5d2b19c33463f79415192a9d54230d22e01747f695dd002a0c10a00",
+    "export": "benchmark_001.txt",
+    "export_sha256": "2524391bee22200eec939aeb11b041c47b8d38ead7e8425caf5d9dbff1d46213",
+    "triangles": 2063
+  },
+  {
+    "source": "Benchmarks/2.mat",
+    "source_sha256": "b4a3f43062fc38e69e163aafc9ad9cefbb4f742ce43560bb7eed71778f95bd35",
+    "export": "benchmark_002.txt",
+    "export_sha256": "180bf6026db39398091c83d06b543c6226bb2fe011eeafc75d9465c37e6fa560",
+    "triangles": 2049
+  },
+  {
+    "source": "Benchmarks/3.mat",
+    "source_sha256": "be01ac2f6b881f0a41618d382de6666ef1ebc3bdb0a7a3f976ca0aa86494f63c",
+    "export": "benchmark_003.txt",
+    "export_sha256": "0c1ce4e6a02a0518d2893869f64d8320e5dba06c239c46a168c09eeb5df0a871",
+    "triangles": 2047
+  },
+  {
+    "source": "Benchmarks/5.mat",
+    "source_sha256": "88f3cc09f28621c708b6e1817adb50cce77421a5da8d4e8731a5239c97c652b1",
+    "export": "benchmark_005.txt",
+    "export_sha256": "30bf333ebf974e63e2166dcf0c446d1a7a1274aaf69503626b8e9ac8a137d408",
+    "triangles": 2010
+  }
+]
