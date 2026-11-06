@@ -1,6 +1,8 @@
-# APP · 第八章配套代码
+# 自适应纯跟踪路径规划 · Adaptive Pure Pursuit
 
-**自适应纯跟踪路径规划 / Adaptive Pure Pursuit**
+[下载 ZIP](https://github.com/libai1943/Adaptive_Pure_Pursuit_Planner/archive/refs/heads/main.zip) · [从这里开始](#安装与运行) · [阅读指南](#主要文件与结果) · [引用](#使用与引用)
+
+在狭窄回头弯上，沿引导线行驶的后轮可以通过，车身却可能擦碰弯道内侧。这个示例让你观察碰撞发生在哪一轮、哪一侧，以及移动哪些引导点后整车能够通过。
 
 本仓库配套中文图书 **《非结构化场景自动驾驶轨迹规划技术》** 第八章《露天矿区狭窄大曲率道路场景中的轨迹规划方法》，提供 **MATLAB 和 C++** 两个版本。
 
@@ -18,6 +20,10 @@
 | [C++](cpp/) | C++17 独立实现同一算法，使用相同的文本场景与参数 | 编译后运行 `app_demo` |
 
 两个版本均从场景输入开始重新规划。MATLAB 无需额外工具箱，C++ 计算不调用 MATLAB；APP 主体无需安装数值优化求解器。
+
+[查看默认场景](data/benchmark_005.txt) · [运行 MATLAB 或 C++ 示例](#安装与运行) · [查看逐场景验证](docs/VALIDATION.md) · [引用论文](CITATION.bib)
+
+**配套图书**　李柏著，《非结构化场景自动驾驶轨迹规划技术》，机械工业出版社，2026 年 6 月，第八章。[作者著作目录](https://faculty.ecnu.edu.cn/_s15/lb2_26496/main.psp)
 
 ## 实际运行效果
 
@@ -142,6 +148,18 @@ python tools/plot_result.py data/benchmark_005.txt output/cpp docs/images/app_be
 ```
 
 也可将 `output/cpp` 替换为 `output/matlab`，从 MATLAB 导出的相同格式数据绘图。
+
+### 怎样读自己跑出的结果
+
+两个版本导出的文件可以用同一套工具检查。先打开 `summary.json` 查看 `success`、`status` 和终点误差，再对照下表追踪具体位置。
+
+| 想检查什么 | 对照哪些数据 |
+| --- | --- |
+| 哪一轮消除了最后一处碰撞？ | `history.csv` 每行给出轮次、冲突采样点数和冲突区间数。 |
+| 过弯时控制器跟踪的是哪里？ | `path.csv` 记录位姿、转角及同一采样时刻的前视点 `carrot_x, carrot_y`，可与 `initial_route.csv` 叠加。 |
+| 两个控制时刻之间的车身去了哪里？ | `dense_path.csv` 的每行是一个积分子步的位姿和转角，适合做更细的几何检查。 |
+
+MATLAB 的第三个可选参数是参数文件。用 `run_demo(sceneFile,outputDirectory,parameterFile)` 分别保存不同设置的结果，即可比较前视距离或引导点微移步长对同一弯道的影响。
 
 ## 两种语言的一致性
 
